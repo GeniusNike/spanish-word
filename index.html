@@ -23,7 +23,7 @@
     h1 { margin:0; font-size:22px; letter-spacing:-0.2px; }
     .sub { color: var(--muted); font-size: 13px; margin-top: 6px; line-height: 1.45; }
     .card { background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
-    .toolbar { display:grid; grid-template-columns: minmax(180px,1fr) auto auto auto auto auto auto; gap:8px; padding:12px; background:rgba(0,0,0,.12); border-bottom:1px solid var(--border); }
+    .toolbar { display:grid; grid-template-columns: minmax(240px,1fr) auto auto auto auto; gap:10px; padding:14px; background:rgba(0,0,0,.12); border-bottom:1px solid var(--border); }
     input[type="search"], input[type="text"], select { width:100%; padding:10px 11px; border-radius:12px; border:1px solid var(--border); background:rgba(255,255,255,.03); color:var(--text); outline:none; font-size:14px; min-width:0; }
     input::placeholder { color: rgba(231,234,245,.55); }
     .btn { padding:9px 10px; border-radius:12px; border:1px solid var(--border); background:rgba(255,255,255,.04); color:var(--text); cursor:pointer; font-size:13px; white-space:nowrap; }
@@ -69,7 +69,7 @@
   <header>
     <div>
       <h1>스페인어 공부 통합 검색 (단어장 + 부사 + 내추가)</h1>
-      <div class="sub">단어장/부사 파일을 함께 검색하고, 새로 배운 단어는 <b>내추가</b>로 저장할 수 있습니다. <b>클라우드 연결</b>에 Apps Script 웹앱 URL을 넣으면 Google Sheets와 동기화되고, 없으면 로컬 모드로 동작합니다. 저장된 단어는 나중에 <b>엑셀(.xlsx)</b>로 내보낼 수 있어요. (생성: 2026-03-21 07:03)</div>
+      <div class="sub">단어장/부사 파일을 함께 검색하고, 새로 배운 단어는 <b>내추가</b>로 로컬 저장할 수 있습니다. 저장된 단어는 나중에 <b>엑셀(.xlsx)</b>로 내보낼 수 있어요. (생성: 2026-03-21 07:03)</div>
     </div>
     <div style="font-size:12px; color:var(--muted);">초기 포함: 단어장 + 부사</div>
   </header>
@@ -78,14 +78,13 @@
     <div class="toolbar">
       <input id="q" type="search" placeholder="검색어 입력 (예: armario / 찬장 / wardrobe / 화상영어 / 260321)" autocomplete="off">
       <button class="btn primary" id="addBtn">단어 추가</button>
-      <button class="btn" id="cloudConnectBtn">클라우드 연결</button>
       <button class="btn green" id="exportBtn">내추가 엑셀 내보내기</button>
       <button class="btn" id="exportHtmlBtn">현재 상태 HTML 내보내기</button>
       <button class="btn" id="loadBtn">엑셀 불러오기</button>
       <button class="btn" id="clearBtn">지우기</button>
     </div>
 
-    <div class="warn" id="warnNoXlsx" style="display: block;">⚠️ 이 HTML과 같은 폴더에 <b>xlsx.full.min.js</b> 파일이 있어야 엑셀 불러오기/엑셀 내보내기가 됩니다.</div>
+    <div class="warn" id="warnNoXlsx" style="display: block;">⚠️ <b>xlsx.full.min.js</b> 파일이 없으면 엑셀 불러오기/엑셀 내보내기만 비활성화됩니다. 검색/추가/수정/삭제는 정상 작동합니다.</div>
 
     <div class="kpi">
       <span class="pill">총 <span id="totalN">2,982</span>개</span>
@@ -96,7 +95,6 @@
         <label><input type="checkbox" id="fAdv" checked=""> 부사</label>
         <label><input type="checkbox" id="fCustom" checked=""> 내추가</label>
       </span>
-      <span class="pill" id="cloudStatusPill">클라우드: 로컬 모드</span>
       <span style="font-size:12px; color:var(--muted);">TIP: 공백으로 여러 단어를 넣으면 모두 포함(AND) 조건입니다.</span>
     </div>
 
@@ -211,7 +209,6 @@ const LS_CUSTOM_KEY = 'spanish_search_multi_custom_rows_v2';
 const LS_LASTREF_KEY = 'spanish_search_multi_last_refs_v2';
 const LS_BASE_OVERRIDE_KEY = 'spanish_search_multi_base_overrides_v2';
 const LS_BASE_DELETE_KEY = 'spanish_search_multi_base_deletions_v2';
-const LS_CLOUD_URL_KEY = 'spanish_search_multi_cloud_url_v1';
 
 const EMBEDDED_CUSTOM_ENTRIES = [{"구분":"내추가","관사":"","스페인어":"decorativo/a","한국어":"장식용의","영어":"decoratvie","사용 상황":"(decorar, 장식하다, decorate)","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbrhlgib6pmau","_created_at":"2026-03-29T12:55:02.370Z","_updated_at":"2026-03-29T12:56:01.795Z"},{"구분":"내추가","관사":"","스페인어":"arriba","한국어":"제일 위에, 위에, 옥상에","영어":"on the top, at the top, above","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbrefaos6y6aa","_created_at":"2026-03-29T12:52:34.416Z"},{"구분":"내추가","관사":"","스페인어":"hierba","한국어":"풀, 약초","영어":"herb","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbra2yckrj1nf","_created_at":"2026-03-29T12:49:11.796Z"},{"구분":"내추가","관사":"","스페인어":"bálcon","한국어":"발코니","영어":"balcony, terrace","사용 상황":"terraza","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbr6a43vjsn8j","_created_at":"2026-03-29T12:46:14.451Z","_updated_at":"2026-03-29T12:47:14.019Z"},{"구분":"내추가","관사":"","스페인어":"desestresante","한국어":"스트레스가 풀리는","영어":"relaxing","사용 상황":"regar las plantas es un trabajo desestresante. (식물에 물주는 건 스트레스가 풀리는 일이야)","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbr13ai6tjpd1","_created_at":"2026-03-29T12:42:12.330Z"},{"구분":"내추가","관사":"","스페인어":"estresante","한국어":"스트레스를 받는","영어":"stressful","사용 상황":"es un trabajo estresante","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbqz04r4l9oxx","_created_at":"2026-03-29T12:40:34.923Z"},{"구분":"내추가","관사":"","스페인어":"echar","한국어":"(물을) 붓다, 넣다","영어":"put","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbquwbtrsyxoj","_created_at":"2026-03-29T12:37:23.369Z"},{"구분":"내추가","관사":"","스페인어":"regar","한국어":"(식물등에) 물을 주다","영어":"irrigate","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbqrvv6u62mel","_created_at":"2026-03-29T12:35:02.802Z"},{"구분":"내추가","관사":"","스페인어":"banquita","한국어":"작은 벤치, 의자","영어":"little bench","사용 상황":"banco + -quita (지소사)","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbfhy47yoqpqy","_created_at":"2026-03-29T07:19:23.383Z"},{"구분":"내추가","관사":"","스페인어":"tender la ropa","한국어":"빨래를 널다","영어":"hang clothes","사용 상황":"","불규칙":"(e -> ie)","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbfcxxilile2x","_created_at":"2026-03-29T07:15:29.862Z","_updated_at":"2026-03-29T07:15:43.603Z"},{"구분":"내추가","관사":"","스페인어":"sembrar","한국어":"(식물등을) 심다","영어":"plant","사용 상황":"","불규칙":"(e -> ie)","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbf7c4kmhkau0","_created_at":"2026-03-29T07:11:08.324Z"},{"구분":"내추가","관사":"","스페인어":"maceta","한국어":"화분","영어":"flower pot","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbf422gv64ns5","_created_at":"2026-03-29T07:08:35.320Z"},{"구분":"내추가","관사":"","스페인어":"pasto","한국어":"잔디","영어":"grass","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbewqgbbhnune","_created_at":"2026-03-29T07:02:53.675Z"},{"구분":"내추가","관사":"","스페인어":"me alegra mucho verte","한국어":"만나뵈서 기쁩니다.","영어":"I am happy to see you","사용 상황":"alegrar를 써서 주어(verte)가 나를 기쁘게 한다는 의미.","불규칙":"","비고":"","참고01":"자체공부","참고02":"260329","참고03":"","참고04":"","_id":"mnbenptft27qeo","_created_at":"2026-03-29T06:55:52.947Z"},{"구분":"내추가","관사":"","스페인어":"encender","한국어":"켜다(불을)","영어":"turn on","사용 상황":"poner를 쓰기도 함 (pon la luz 불 켜줘)","불규칙":"","비고":"","참고01":"자체공부","참고02":"260329","참고03":"","참고04":"","_id":"mnbemiwih73dy7","_created_at":"2026-03-29T06:54:57.330Z"},{"구분":"내추가","관사":"","스페인어":"césped","한국어":"잔디 (관리되는 잔디밭)","영어":"lawn","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbbl1vmxjne0e","_created_at":"2026-03-29T05:29:49.763Z"},{"구분":"내추가","관사":"","스페인어":"prado","한국어":"초원, 풀밭 (자연 그대로)","영어":"grass, lawn, meadow","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbbgn63x1mxi8","_created_at":"2026-03-29T05:26:24.075Z","_updated_at":"2026-03-29T05:29:10.297Z"},{"구분":"내추가","관사":"","스페인어":"desaparecer","한국어":"사라지다","영어":"disappear","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbb18d64omrqx","_created_at":"2026-03-29T05:14:25.050Z"},{"구분":"내추가","관사":"","스페인어":"vía","한국어":"길, 도로","영어":"road","사용 상황":"= camino","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbayipzdemmtg","_created_at":"2026-03-29T05:12:18.503Z"},{"구분":"부사","관사":"","스페인어":"en vías de + 명사","한국어":"~로 향하는","영어":"on the way to","사용 상황":"= en camino de (está en vías de extinción, 점점 사라지고 있는)","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnbaxa33k5agv5","_created_at":"2026-03-29T05:11:20.655Z"},{"구분":"부사","관사":"","스페인어":"bàsicamente","한국어":"기본적으로","영어":"basically","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnaiexioknodm0","_created_at":"2026-03-28T15:53:15.312Z"},{"구분":"내추가","관사":"","스페인어":"solían","한국어":"~하곤 했다 (soler의 불완료과거)","영어":"used to","사용 상황":"las casas solían ser muy grande (식민지시기에, 집들이 매우 크곤 했다)","불규칙":"","비고":"","참고01":"","참고02":"","참고03":"","참고04":"","_id":"mnaie4rqyxltu7","_created_at":"2026-03-28T15:52:38.055Z"},{"구분":"내추가","관사":"","스페인어":"crearse","한국어":"만들어지다(수동/재귀)","영어":"is created","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnai9l3hdnmjzl","_created_at":"2026-03-28T15:49:05.933Z"},{"구분":"내추가","관사":"","스페인어":"referirse + a","한국어":"~을 의미하다, ~을 가리키다","영어":"refer to","사용 상황":"","불규칙":"(e -> ie)","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnai2ucwqe8o4k","_created_at":"2026-03-28T15:43:51.344Z","_updated_at":"2026-03-28T15:44:28.511Z"},{"구분":"내추가","관사":"","스페인어":"departamento","한국어":"아파트 (중남미에서 주로 사용)","영어":"apartamento","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnahxiyuet46eg","_created_at":"2026-03-28T15:39:43.302Z"},{"구분":"내추가","관사":"","스페인어":"enorme","한국어":"거대한","영어":"enormous, huge","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnahqr4m2pslhv","_created_at":"2026-03-28T15:34:27.286Z","_updated_at":"2026-03-28T15:34:43.283Z"},{"구분":"부사","관사":"","스페인어":"obviamente","한국어":"명백히","영어":"obviously","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnahm7x5fhwnwc","_created_at":"2026-03-28T15:30:55.769Z"},{"구분":"내추가","관사":"","스페인어":"recreo","한국어":"쉬는 시간","영어":"break, recess","사용 상황":"=descanso","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnahap2z1n0r85","_created_at":"2026-03-28T15:21:58.139Z","_updated_at":"2026-03-28T15:24:11.125Z"},{"구분":"내추가","관사":"","스페인어":"unirse","한국어":"합류하다","영어":"join","사용 상황":"antes de unirme a Samsung (삼성에 합류하기 전에)","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnagb8ss49al4s","_created_at":"2026-03-28T14:54:24.076Z","_updated_at":"2026-03-28T14:54:44.337Z"},{"구분":"내추가","관사":"","스페인어":"trabajador","한국어":"노동자, 근로자","영어":"worker","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnag1bkq6xpiyd","_created_at":"2026-03-28T14:46:41.114Z","_updated_at":"2026-03-28T14:47:01.814Z"},{"구분":"내추가","관사":"","스페인어":"cuidarse","한국어":"자신을 돌보다, 관리하다","영어":"take care of (themselve)","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnaffnlf8skiii","_created_at":"2026-03-28T14:29:50.259Z"},{"구분":"내추가","관사":"","스페인어":"consistir en","한국어":"~으로 구성되다","영어":"consist","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnaer7ljs5jr0m","_created_at":"2026-03-28T14:10:49.783Z"},{"구분":"내추가","관사":"","스페인어":"te saludo","한국어":"안녕하세요? 느낌(너에게 인사할게)","영어":"hello","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260327","참고03":"","참고04":"","_id":"mnaej5mc8i0k77","_created_at":"2026-03-28T14:04:33.972Z"},{"구분":"내추가","관사":"","스페인어":"colocar","한국어":"(정리해서)놓다","영어":"place","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1re1h67nizmw","_created_at":"2026-03-22T12:54:34.746Z"},{"구분":"내추가","관사":"","스페인어":"librero","한국어":"책방","영어":"bookseller","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1rc2ug39itg3","_created_at":"2026-03-22T12:53:03.209Z"},{"구분":"내추가","관사":"","스페인어":"descrito","한국어":"설명된 (과거분사)","영어":"described","사용 상황":"muy bien descrito (잘 설명했어)","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1r8bqtlwefkx","_created_at":"2026-03-22T12:50:08.117Z"},{"구분":"내추가","관사":"","스페인어":"alrededor","한국어":"주변에","영어":"surrounding, around","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1r24pn9boefe","_created_at":"2026-03-22T12:45:19.067Z"},{"구분":"내추가","관사":"","스페인어":"nevera","한국어":"냉장고","영어":"refrigerator","사용 상황":"(스페인 frigorifíco, 중남미 refrigerador)","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1qy1qaek3wjr","_created_at":"2026-03-22T12:42:08.578Z"},{"구분":"내추가","관사":"","스페인어":"felicitar","한국어":"축하하다","영어":"congraturate","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1qr5kbrudat9","_created_at":"2026-03-22T12:36:46.955Z"},{"구분":"내추가","관사":"","스페인어":"completar","한국어":"완성하다","영어":"complete","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1q2mgy73x7so","_created_at":"2026-03-22T12:17:42.466Z"},{"구분":"내추가","관사":"","스페인어":"ahorrarse","한국어":"수고를 덜다, 절약하다","영어":"save (time / effort / trouble)","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1pwz436p09y7","_created_at":"2026-03-22T12:13:18.915Z"},{"구분":"내추가","관사":"","스페인어":"espejo","한국어":"거울","영어":"mirror","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1jgcc3hf40ye","_created_at":"2026-03-22T09:12:25.203Z","_updated_at":"2026-03-22T09:12:41.753Z"},{"구분":"내추가","관사":"","스페인어":"afirmación","한국어":"확언, 단언","영어":"affirmation, statement","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1j3lb2becc8z","_created_at":"2026-03-22T09:02:30.302Z"},{"구분":"내추가","관사":"","스페인어":"afirmar","한국어":"확언하다, 단정하다","영어":"affirm, confirm","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1j248ckzi5e4","_created_at":"2026-03-22T09:01:21.516Z"},{"구분":"내추가","관사":"","스페인어":"darse cuenta","한국어":"알아차리다","영어":"notice, realize","사용 상황":"me di cuenta, te diste cuenta, me doy cuenta","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1ibxyo90242x","_created_at":"2026-03-22T08:41:00.336Z","_updated_at":"2026-03-22T08:41:23.553Z"},{"구분":"내추가","관사":"","스페인어":"uso","한국어":"사용, 사용법","영어":"use","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1i576opx78gu","_created_at":"2026-03-22T08:35:45.696Z"},{"구분":"내추가","관사":"","스페인어":"plural","한국어":"복수의","영어":"plural","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1cr0vhroqxal","_created_at":"2026-03-22T06:04:46.253Z"},{"구분":"내추가","관사":"","스페인어":"cocina","한국어":"주방","영어":"kitchen","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1cly4gtc3qzm","_created_at":"2026-03-22T06:00:49.408Z"},{"구분":"내추가","관사":"","스페인어":"armario","한국어":"찬장","영어":"wardrobe, cupboard","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1cldicn2ftza","_created_at":"2026-03-22T06:00:22.692Z"},{"구분":"내추가","관사":"","스페인어":"determinado","한국어":"정관사","영어":"definite","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1cijubcou8qc","_created_at":"2026-03-22T05:58:10.931Z"},{"구분":"내추가","관사":"","스페인어":"indeterminado","한국어":"부정관사","영어":"indefinite","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1chvwjkw5l9v","_created_at":"2026-03-22T05:57:39.907Z"},{"구분":"내추가","관사":"","스페인어":"toalla","한국어":"수건","영어":"tower","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1cfgjvlyyk8p","_created_at":"2026-03-22T05:55:46.699Z"},{"구분":"내추가","관사":"","스페인어":"fijarse","한국어":"주의하다, 집중하다","영어":"pay attention","사용 상황":"","불규칙":"","비고":"","참고01":"화상영어","참고02":"260321","참고03":"","참고04":"","_id":"mn1bdsl57iuk3k","_created_at":"2026-03-22T05:26:29.369Z","_updated_at":"2026-03-22T05:27:04.480Z"}];
 const EMBEDDED_LAST_REFS = {"ref1":"화상영어","ref2":"251212","ref3":"","ref4":""};
@@ -229,8 +226,6 @@ const loadBtn = document.getElementById('loadBtn');
 const exportBtn = document.getElementById('exportBtn');
 const exportHtmlBtn = document.getElementById('exportHtmlBtn');
 const addBtn = document.getElementById('addBtn');
-const cloudConnectBtn = document.getElementById('cloudConnectBtn');
-const cloudStatusPill = document.getElementById('cloudStatusPill');
 const fileInput = document.getElementById('fileInput');
 const warnNoXlsx = document.getElementById('warnNoXlsx');
 const fVocab = document.getElementById('fVocab');
@@ -275,8 +270,11 @@ function escapeHtml(s) {
 }
 function norm(v) { return (v ?? '').toString().replace(/\s+/g,' ').trim(); }
 function hasXLSX() { return typeof XLSX !== 'undefined' && XLSX && XLSX.read && XLSX.utils; }
-if (!hasXLSX()) warnNoXlsx.style.display = 'block';
-
+if (!hasXLSX()) {
+  warnNoXlsx.style.display = 'block';
+  if (exportBtn) { exportBtn.disabled = true; exportBtn.title = 'xlsx.full.min.js 필요'; }
+  if (loadBtn) { loadBtn.disabled = true; loadBtn.title = 'xlsx.full.min.js 필요'; }
+}
 
 
 function deepClone(v) { return JSON.parse(JSON.stringify(v)); }
@@ -290,214 +288,26 @@ function safeReadJson(key, fallback) {
     return deepClone(fallback);
   }
 }
-
-let cloudUrl = localStorage.getItem(LS_CLOUD_URL_KEY) || '';
-let cloudEnabled = false;
-let cloudLoaded = false;
-let cloudState = {
-  customEntries: [],
-  lastRefs: {},
-  baseOverrides: {},
-  baseDeletions: [],
-};
-let saveTimer = null;
-let saveInFlight = false;
-
-function getLocalCustomEntries() {
+function getCustomEntries() {
   const v = safeReadJson(LS_CUSTOM_KEY, EMBEDDED_CUSTOM_ENTRIES);
   return Array.isArray(v) ? v : [];
 }
-function setLocalCustomEntries(entries) { localStorage.setItem(LS_CUSTOM_KEY, JSON.stringify(entries)); }
-function getLocalLastRefs() {
+function setCustomEntries(entries) { localStorage.setItem(LS_CUSTOM_KEY, JSON.stringify(entries)); }
+function getLastRefs() {
   const v = safeReadJson(LS_LASTREF_KEY, EMBEDDED_LAST_REFS);
   return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
 }
-function setLocalLastRefs(refs) { localStorage.setItem(LS_LASTREF_KEY, JSON.stringify(refs)); }
-function getLocalBaseOverrides() {
+function setLastRefs(refs) { localStorage.setItem(LS_LASTREF_KEY, JSON.stringify(refs)); updateLastRefDisplay(); }
+function getBaseOverrides() {
   const v = safeReadJson(LS_BASE_OVERRIDE_KEY, EMBEDDED_BASE_OVERRIDES);
   return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
 }
-function setLocalBaseOverrides(v) { localStorage.setItem(LS_BASE_OVERRIDE_KEY, JSON.stringify(v)); }
-function getLocalBaseDeletions() {
+function setBaseOverrides(v) { localStorage.setItem(LS_BASE_OVERRIDE_KEY, JSON.stringify(v)); }
+function getBaseDeletions() {
   const v = safeReadJson(LS_BASE_DELETE_KEY, EMBEDDED_BASE_DELETIONS);
   return Array.isArray(v) ? v : [];
 }
-function setLocalBaseDeletions(v) { localStorage.setItem(LS_BASE_DELETE_KEY, JSON.stringify(v)); }
-
-function getCustomEntries() {
-  if (cloudEnabled && cloudLoaded) return Array.isArray(cloudState.customEntries) ? cloudState.customEntries : [];
-  return getLocalCustomEntries();
-}
-function setCustomEntries(entries) {
-  setLocalCustomEntries(entries);
-  if (cloudEnabled) {
-    cloudState.customEntries = Array.isArray(entries) ? entries : [];
-    queueSaveState();
-  }
-}
-function getLastRefs() {
-  if (cloudEnabled && cloudLoaded) return cloudState.lastRefs && typeof cloudState.lastRefs === 'object' ? cloudState.lastRefs : {};
-  return getLocalLastRefs();
-}
-function setLastRefs(refs) {
-  setLocalLastRefs(refs);
-  if (cloudEnabled) {
-    cloudState.lastRefs = refs && typeof refs === 'object' ? refs : {};
-    queueSaveState();
-  }
-  updateLastRefDisplay();
-}
-function getBaseOverrides() {
-  if (cloudEnabled && cloudLoaded) return cloudState.baseOverrides && typeof cloudState.baseOverrides === 'object' ? cloudState.baseOverrides : {};
-  return getLocalBaseOverrides();
-}
-function setBaseOverrides(v) {
-  setLocalBaseOverrides(v);
-  if (cloudEnabled) {
-    cloudState.baseOverrides = v && typeof v === 'object' ? v : {};
-    queueSaveState();
-  }
-}
-function getBaseDeletions() {
-  if (cloudEnabled && cloudLoaded) return Array.isArray(cloudState.baseDeletions) ? cloudState.baseDeletions : [];
-  return getLocalBaseDeletions();
-}
-function setBaseDeletions(v) {
-  setLocalBaseDeletions(v);
-  if (cloudEnabled) {
-    cloudState.baseDeletions = Array.isArray(v) ? v : [];
-    queueSaveState();
-  }
-}
-
-function buildStateFromLocal() {
-  return {
-    customEntries: getLocalCustomEntries(),
-    lastRefs: getLocalLastRefs(),
-    baseOverrides: getLocalBaseOverrides(),
-    baseDeletions: getLocalBaseDeletions(),
-  };
-}
-function applyCloudStateToLocal(state) {
-  setLocalCustomEntries(Array.isArray(state.customEntries) ? state.customEntries : []);
-  setLocalLastRefs(state.lastRefs && typeof state.lastRefs === 'object' ? state.lastRefs : {});
-  setLocalBaseOverrides(state.baseOverrides && typeof state.baseOverrides === 'object' ? state.baseOverrides : {});
-  setLocalBaseDeletions(Array.isArray(state.baseDeletions) ? state.baseDeletions : []);
-}
-function getCloudStatusText() {
-  if (!cloudUrl) return '클라우드: 로컬 모드';
-  if (cloudEnabled && cloudLoaded) return '클라우드: 연결됨';
-  return '클라우드: URL 저장됨';
-}
-function updateCloudStatusUI() {
-  if (cloudStatusPill) cloudStatusPill.textContent = getCloudStatusText();
-  if (cloudConnectBtn) cloudConnectBtn.textContent = cloudEnabled ? '클라우드 변경' : '클라우드 연결';
-}
-async function apiGetState() {
-  const url = cloudUrl + (cloudUrl.includes('?') ? '&' : '?') + 'action=getState&_ts=' + Date.now();
-  const res = await fetch(url, { method: 'GET' });
-  if (!res.ok) throw new Error('State load failed: ' + res.status);
-  const data = await res.json();
-  if (!data.ok) throw new Error(data.error || 'Unknown getState error');
-  return data.state || {};
-}
-async function apiSaveState() {
-  if (!cloudEnabled || !cloudLoaded || saveInFlight) return;
-  saveInFlight = true;
-  try {
-    const res = await fetch(cloudUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'saveState', state: cloudState }),
-    });
-    if (!res.ok) throw new Error('State save failed: ' + res.status);
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error || 'Unknown saveState error');
-  } finally {
-    saveInFlight = false;
-  }
-}
-function queueSaveState() {
-  if (!cloudEnabled) return;
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => { apiSaveState().catch(console.error); }, 250);
-}
-function isCloudStateEmpty(state) {
-  if (!state || typeof state !== 'object') return true;
-  return (!Array.isArray(state.customEntries) || state.customEntries.length === 0)
-    && (!state.lastRefs || Object.keys(state.lastRefs).length === 0)
-    && (!state.baseOverrides || Object.keys(state.baseOverrides).length === 0)
-    && (!Array.isArray(state.baseDeletions) || state.baseDeletions.length === 0);
-}
-async function connectCloud(url, silent=false) {
-  cloudUrl = (url || '').trim();
-  if (!cloudUrl) throw new Error('URL이 비어 있습니다.');
-  localStorage.setItem(LS_CLOUD_URL_KEY, cloudUrl);
-  updateCloudStatusUI();
-
-  const remote = await apiGetState();
-  const localState = buildStateFromLocal();
-  cloudState = {
-    customEntries: Array.isArray(remote.customEntries) ? remote.customEntries : [],
-    lastRefs: remote.lastRefs && typeof remote.lastRefs === 'object' ? remote.lastRefs : {},
-    baseOverrides: remote.baseOverrides && typeof remote.baseOverrides === 'object' ? remote.baseOverrides : {},
-    baseDeletions: Array.isArray(remote.baseDeletions) ? remote.baseDeletions : [],
-  };
-
-  if (isCloudStateEmpty(cloudState) && !isCloudStateEmpty(localState)) {
-    cloudState = deepClone(localState);
-    cloudEnabled = true;
-    cloudLoaded = true;
-    await apiSaveState();
-  } else {
-    applyCloudStateToLocal(cloudState);
-    cloudEnabled = true;
-    cloudLoaded = true;
-  }
-
-  updateCloudStatusUI();
-  updateLastRefDisplay();
-  refreshAll();
-  if (!silent) alert('클라우드 연결 완료');
-}
-async function handleCloudConnect() {
-  const current = localStorage.getItem(LS_CLOUD_URL_KEY) || '';
-  const input = prompt('Apps Script 웹앱 URL(/exec)을 붙여넣어 주세요.
-
-비우고 확인하면 로컬 모드로 돌아갑니다.', current);
-  if (input === null) return;
-  const trimmed = input.trim();
-  if (!trimmed) {
-    cloudEnabled = false;
-    cloudLoaded = false;
-    cloudUrl = '';
-    localStorage.removeItem(LS_CLOUD_URL_KEY);
-    updateCloudStatusUI();
-    updateLastRefDisplay();
-    refreshAll();
-    alert('로컬 모드로 전환했습니다.');
-    return;
-  }
-  try {
-    await connectCloud(trimmed);
-  } catch (err) {
-    console.error(err);
-    alert('클라우드 연결 실패: ' + (err && err.message ? err.message : err));
-  }
-}
-async function initializeCloudIfNeeded() {
-  updateCloudStatusUI();
-  const saved = localStorage.getItem(LS_CLOUD_URL_KEY) || '';
-  if (!saved) return;
-  try {
-    await connectCloud(saved, true);
-  } catch (err) {
-    console.error(err);
-    cloudEnabled = false;
-    cloudLoaded = false;
-    updateCloudStatusUI();
-  }
-}
+function setBaseDeletions(v) { localStorage.setItem(LS_BASE_DELETE_KEY, JSON.stringify(v)); }
 
 function updateLastRefDisplay() {
   const refs = getLastRefs();
@@ -647,7 +457,6 @@ function onQuery() {
 function refreshAll() { makeHeader(); rebuildAllRows(); onQuery(); }
 
 clearBtn.addEventListener('click', () => { qEl.value = ''; qEl.focus(); onQuery(); });
-cloudConnectBtn.addEventListener('click', handleCloudConnect);
 qEl.addEventListener('input', onQuery);
 [fVocab, fAdv, fCustom].forEach(el => el.addEventListener('change', onQuery));
 
@@ -1071,9 +880,10 @@ window.addEventListener('keydown', (e) => {
   }
 }, true);
 
+updateLastRefDisplay();
 setModalMode(false);
 refreshAll();
-initializeCloudIfNeeded().finally(() => { updateLastRefDisplay(); refreshAll(); qEl.focus(); });
+qEl.focus();
 </script>
 
 </body></html>
