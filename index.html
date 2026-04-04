@@ -71,14 +71,14 @@
       <h1>스페인어 공부 통합 검색 (단어장 + 부사 + 내추가)</h1>
       <div class="sub">단어장/부사 파일을 함께 검색하고, 새로 배운 단어는 <b>내추가</b>로 저장할 수 있습니다. <b>클라우드 연결</b>에 Apps Script 웹앱 URL을 넣으면 Google Sheets와 동기화되고, 없으면 로컬 모드로 동작합니다. 저장된 단어는 나중에 <b>엑셀(.xlsx)</b>로 내보낼 수 있어요. (생성: 2026-03-21 07:03)</div>
     </div>
-    <div style="font-size:12px; color:var(--muted);">초기 포함: 단어장 + 부사 · 클라우드 포함 안정화 버전</div>
+    <div style="font-size:12px; color:var(--muted);">초기 포함: 단어장 + 부사 · 클라우드 버튼 표시 보정 v2</div>
   </header>
 
   <div class="card">
     <div class="toolbar">
       <input id="q" type="search" placeholder="검색어 입력 (예: armario / 찬장 / wardrobe / 화상영어 / 260321)" autocomplete="off">
       <button class="btn primary" id="addBtn">단어 추가</button>
-      <button class="btn" id="cloudConnectBtn">클라우드 연결</button>
+      <button class="btn primary" id="cloudConnectBtn" style="border:1px solid rgba(122,162,255,.55); box-shadow: inset 0 0 0 1px rgba(122,162,255,.15);">☁ 클라우드 연결</button>
       <button class="btn green" id="exportBtn">내추가 엑셀 내보내기</button>
       <button class="btn" id="exportHtmlBtn">현재 상태 HTML 내보내기</button>
       <button class="btn" id="loadBtn">엑셀 불러오기</button>
