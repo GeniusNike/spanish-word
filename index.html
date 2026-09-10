@@ -2,7 +2,7 @@
 <html lang="ko"><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>스페인어 공부 통합 검색 · Cloud Safe v7</title>
+  <title>스페인어 공부 통합 검색 · Cloud Safe v8</title>
   <script src="xlsx.full.min.js"></script>
   <style>
     :root {
@@ -71,7 +71,7 @@
       <h1>스페인어 공부 통합 검색 (단어장 + 부사 + 내추가)</h1>
       <div class="sub">단어장/부사 파일을 함께 검색하고, 새로 배운 단어는 <b>내추가</b>로 저장할 수 있습니다. <b>클라우드 연결</b>에 Apps Script 웹앱 URL을 넣으면 Google Sheets와 동기화되고, 없으면 로컬 모드로 동작합니다. 연결 시 현재 전체 단어 DB를 시트로 업로드하고 이후 추가/수정/삭제도 시트에 반영합니다. 저장된 단어는 나중에 <b>엑셀(.xlsx)</b>로 내보낼 수 있어요. (생성: 2026-03-21 07:03)</div>
     </div>
-    <div style="font-size:12px; color:var(--muted);">초기 포함: 단어장 + 부사 · Google Sheets 분할 동기화 v7</div>
+    <div style="font-size:12px; color:var(--muted);">초기 포함: 단어장 + 부사 · Google Sheets 진단·안전 동기화 v8</div>
   </header>
 
   <div class="card">
@@ -569,10 +569,18 @@ function jsonpRequest(action, params={}) {
     script.src = cloudUrl + (cloudUrl.includes('?') ? '&' : '?') + query.toString();
     script.onerror = () => {
       cleanup();
-      reject(new Error(action + ' JSONP load failed'));
+      reject(new Error(
+        action + ' JSONP load failed. ' +
+        'Apps Script 웹앱의 액세스 권한이 "모든 사용자(로그인 불필요)"인지 확인하세요.'
+      ));
     };
     document.head.appendChild(script);
   });
+}
+
+async function apiPing() {
+  const data = await jsonpRequest('ping');
+  return data || {};
 }
 
 async function apiGetState() {
@@ -753,38 +761,76 @@ function isCloudStateEmpty(state) {
 }
 async function connectCloud(url, silent=false) {
   cloudUrl = (url || '').trim();
-  if (!cloudUrl) throw new Error('URL이 비어 있습니다.');
-  localStorage.setItem(LS_CLOUD_URL_KEY, cloudUrl);
-  setCloudStatusMessage('클라우드: 불러오는 중…');
 
-  // 중요: 먼저 Google Sheet의 현재 DB를 읽는다. 연결만으로는 절대 덮어쓰지 않는다.
-  const [remoteState, remoteWords] = await Promise.all([
-    apiGetState(),
-    apiGetWords(),
-  ]);
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec(?:\?.*)?$/.test(cloudUrl)) {
+    throw new Error(
+      '웹앱 주소 형식이 잘못되었습니다. Apps Script 배포 관리 화면의 ' +
+      'https://script.google.com/macros/s/.../exec 주소를 사용하세요.'
+    );
+  }
+
+  localStorage.setItem(LS_CLOUD_URL_KEY, cloudUrl);
+  setCloudStatusMessage('클라우드: 연결 진단 중…');
+
+  // 1단계: 스프레드시트를 전혀 건드리지 않는 익명 JSONP ping.
+  // 이 단계가 실패하면 DB/코드 문제가 아니라 배포 접근권한 문제다.
+  let ping;
+  try {
+    ping = await apiPing();
+  } catch (err) {
+    throw new Error(
+      '웹앱 외부접근 테스트 실패. 주소창에서 ping이 되더라도 로그인 세션 덕분일 수 있습니다. ' +
+      '배포 설정을 "실행 사용자: 나", "액세스 권한: 모든 사용자(로그인 불필요)"로 설정하세요. ' +
+      '[' + (err && err.message ? err.message : err) + ']'
+    );
+  }
+
+  setCloudStatusMessage('클라우드: WordsDB 확인 중…');
+
+  // 2단계: WordsDB를 먼저 읽는다. 이것이 현재 약 3,100개 단어의 원본이다.
+  let remoteWords;
+  try {
+    remoteWords = await apiGetWords();
+  } catch (err) {
+    throw new Error(
+      'WordsDB 불러오기 실패: ' + (err && err.message ? err.message : err)
+    );
+  }
+
+  // 3단계: AppState는 보조 메타데이터다. WordsDB가 정상이라면
+  // AppState 문제 때문에 3,100개 단어 로드를 막지 않는다.
+  let remoteState = {};
+  try {
+    remoteState = await apiGetState();
+  } catch (err) {
+    console.warn('AppState를 불러오지 못했지만 WordsDB는 계속 사용합니다:', err);
+    remoteState = {};
+  }
 
   if (remoteWords.length > 0) {
-    // Google Sheet WordsDB를 최신 원본(source of truth)으로 채택한다.
     loadCloudWordsAsCanonical(remoteWords, remoteState || {});
     cloudEnabled = true;
     cloudLoaded = true;
 
     updateLastRefDisplay();
     refreshAll();
-    setCloudStatusMessage('클라우드: 불러옴 · ' + remoteWords.length.toLocaleString() + '행');
+    setCloudStatusMessage(
+      '클라우드: 불러옴 · ' + remoteWords.length.toLocaleString() + '행 · v8'
+    );
 
     if (!silent) {
       alert(
-        '클라우드 연결 완료\\n' +
-        '- Google Sheet의 현재 WordsDB ' + remoteWords.length.toLocaleString() + '개를 불러왔습니다.\\n' +
-        '- 연결만으로 기존 시트 데이터는 덮어쓰지 않습니다.\\n' +
-        '- 앞으로 추가/수정/삭제한 내용부터 전체 DB에 동기화됩니다.'
+        '클라우드 연결 완료\n' +
+        '- 서버 버전: ' + String((ping && ping.version) || '확인됨') + '\n' +
+        '- Google Sheet WordsDB ' + remoteWords.length.toLocaleString() + '개를 불러왔습니다.\n' +
+        '- 연결만으로 기존 시트는 덮어쓰지 않습니다.\n' +
+        '- AppState는 보조 데이터이며, 읽기 실패 시에도 WordsDB를 우선 사용합니다.'
       );
     }
     return;
   }
 
-  // WordsDB가 비어 있는 예외적인 경우에만 기존 state/local 데이터를 이용한다.
+  // WordsDB가 비어 있을 때만 로컬/state를 사용하며 자동 덮어쓰기는 하지 않는다.
   const localState = buildStateFromLocal();
   cloudState = {
     customEntries: Array.isArray(remoteState.customEntries) ? remoteState.customEntries : [],
@@ -807,10 +853,8 @@ async function connectCloud(url, silent=false) {
 
   if (!silent) {
     alert(
-      '클라우드 연결 완료\\n' +
-      '- Google Sheet의 WordsDB가 비어 있습니다.\\n' +
-      '- 안전을 위해 연결 시 자동 업로드는 하지 않았습니다.\\n' +
-      '- 단어를 추가/수정하면 그때 현재 DB가 저장됩니다.'
+      '클라우드에는 연결됐지만 WordsDB가 비어 있습니다.\n' +
+      '안전을 위해 자동 업로드는 하지 않았습니다.'
     );
   }
 }
