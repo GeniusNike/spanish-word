@@ -2,7 +2,7 @@
 <html lang="ko"><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>스페인어 공부 통합 검색 · Cloud Safe v6</title>
+  <title>스페인어 공부 통합 검색 · Cloud Safe v7</title>
   <script src="xlsx.full.min.js"></script>
   <style>
     :root {
@@ -71,7 +71,7 @@
       <h1>스페인어 공부 통합 검색 (단어장 + 부사 + 내추가)</h1>
       <div class="sub">단어장/부사 파일을 함께 검색하고, 새로 배운 단어는 <b>내추가</b>로 저장할 수 있습니다. <b>클라우드 연결</b>에 Apps Script 웹앱 URL을 넣으면 Google Sheets와 동기화되고, 없으면 로컬 모드로 동작합니다. 연결 시 현재 전체 단어 DB를 시트로 업로드하고 이후 추가/수정/삭제도 시트에 반영합니다. 저장된 단어는 나중에 <b>엑셀(.xlsx)</b>로 내보낼 수 있어요. (생성: 2026-03-21 07:03)</div>
     </div>
-    <div style="font-size:12px; color:var(--muted);">초기 포함: 단어장 + 부사 · Google Sheets CORS-free 동기화 v6</div>
+    <div style="font-size:12px; color:var(--muted);">초기 포함: 단어장 + 부사 · Google Sheets 분할 동기화 v7</div>
   </header>
 
   <div class="card">
@@ -581,8 +581,32 @@ async function apiGetState() {
 }
 
 async function apiGetWords() {
-  const data = await jsonpRequest('getWords', { sheetName: CLOUD_SHEET_NAME });
-  return Array.isArray(data.rows) ? data.rows : [];
+  const pageSize = 250;
+  let offset = 0;
+  let total = null;
+  const allRows = [];
+
+  while (total === null || offset < total) {
+    setCloudStatusMessage(
+      '클라우드: 단어 불러오는 중… ' +
+      (total === null ? allRows.length.toLocaleString() : (allRows.length.toLocaleString() + ' / ' + total.toLocaleString()))
+    );
+
+    const data = await jsonpRequest('getWordsPage', {
+      sheetName: CLOUD_SHEET_NAME,
+      offset,
+      limit: pageSize,
+    });
+
+    const rows = Array.isArray(data.rows) ? data.rows : [];
+    total = Number.isFinite(Number(data.total)) ? Number(data.total) : (offset + rows.length);
+    allRows.push(...rows);
+
+    if (rows.length === 0) break;
+    offset += rows.length;
+  }
+
+  return allRows;
 }
 
 async function apiGetSyncInfo() {
