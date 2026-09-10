@@ -2,7 +2,7 @@
 <html lang="ko"><head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>스페인어 공부 통합 검색 (단어장 + 부사 + 내추가)</title>
+  <title>스페인어 공부 통합 검색 · Cloud Safe v5</title>
   <script src="xlsx.full.min.js"></script>
   <style>
     :root {
@@ -71,7 +71,7 @@
       <h1>스페인어 공부 통합 검색 (단어장 + 부사 + 내추가)</h1>
       <div class="sub">단어장/부사 파일을 함께 검색하고, 새로 배운 단어는 <b>내추가</b>로 저장할 수 있습니다. <b>클라우드 연결</b>에 Apps Script 웹앱 URL을 넣으면 Google Sheets와 동기화되고, 없으면 로컬 모드로 동작합니다. 연결 시 현재 전체 단어 DB를 시트로 업로드하고 이후 추가/수정/삭제도 시트에 반영합니다. 저장된 단어는 나중에 <b>엑셀(.xlsx)</b>로 내보낼 수 있어요. (생성: 2026-03-21 07:03)</div>
     </div>
-    <div style="font-size:12px; color:var(--muted);">초기 포함: 단어장 + 부사 · Google Sheets 전체 동기화 v3</div>
+    <div style="font-size:12px; color:var(--muted);">초기 포함: 단어장 + 부사 · Google Sheets 우선 안전 동기화 v5</div>
   </header>
 
   <div class="card">
@@ -305,6 +305,7 @@ let cloudState = {
 let persistTimer = null;
 let persistInFlight = false;
 let pendingPersistReason = '';
+let cloudBaseIdBySignature = new Map();
 
 
 function getLocalCustomEntries() {
@@ -442,6 +443,89 @@ function getEffectiveRowsForCloud() {
 
   return rows;
 }
+
+function rowSignature(row) {
+  return (row || []).map(v => String(v ?? '')).join('␟');
+}
+
+function cloudRecordToRow(r) {
+  return [
+    r.dataset ?? '',
+    r.article ?? '',
+    r.spanish ?? '',
+    r.korean ?? '',
+    r.english ?? '',
+    r.usage ?? '',
+    r.irregular ?? '',
+    r.note ?? '',
+    r.ref1 ?? '',
+    r.ref2 ?? '',
+    r.ref3 ?? '',
+    r.ref4 ?? '',
+  ];
+}
+
+function cloudRecordToCustomEntry(r) {
+  const row = cloudRecordToRow(r);
+  return {
+    구분: row[0] || '내추가',
+    관사: row[1],
+    스페인어: row[2],
+    한국어: row[3],
+    영어: row[4],
+    '사용 상황': row[5],
+    불규칙: row[6],
+    비고: row[7],
+    참고01: row[8],
+    참고02: row[9],
+    참고03: row[10],
+    참고04: row[11],
+    _id: String(r.row_id || (Date.now().toString(36) + Math.random().toString(36).slice(2,8))),
+    _created_at: r.created_at || '',
+    _updated_at: r.updated_at || '',
+  };
+}
+
+function loadCloudWordsAsCanonical(remoteRows, remoteState) {
+  const baseRows = [];
+  const customEntries = [];
+  const idMap = new Map();
+
+  for (const r of (remoteRows || [])) {
+    const sourceKind = String(r.source_kind || 'base').toLowerCase();
+    const row = cloudRecordToRow(r);
+
+    if (sourceKind === 'custom') {
+      customEntries.push(cloudRecordToCustomEntry(r));
+    } else {
+      baseRows.push(row);
+      if (r.row_id) idMap.set(rowSignature(row), String(r.row_id));
+    }
+  }
+
+  BASE_ROWS = baseRows;
+  BASE_SEARCH = BASE_ROWS.map(r => rowSignature(r).toLowerCase());
+  cloudBaseIdBySignature = idMap;
+
+  // 엑셀 불러오기 후 내부 dataset 분류와도 일치시키기
+  if (typeof datasets !== 'undefined') {
+    datasets['단어장'] = BASE_ROWS.filter(r => (r[0] || '') === '단어장');
+    datasets['부사'] = BASE_ROWS.filter(r => (r[0] || '') === '부사');
+  }
+
+  // WordsDB는 이미 수정/삭제가 반영된 "현재 최종 DB"이므로
+  // 과거 override/delete를 다시 적용하지 않는다.
+  cloudState = {
+    customEntries,
+    lastRefs: remoteState && remoteState.lastRefs && typeof remoteState.lastRefs === 'object'
+      ? remoteState.lastRefs : {},
+    baseOverrides: {},
+    baseDeletions: [],
+  };
+
+  applyCloudStateToLocal(cloudState);
+}
+
 function getCloudStatusText() {
   if (!cloudUrl) return '클라우드: 로컬 모드';
   if (cloudEnabled && cloudLoaded) return '클라우드: 연결됨 · 시트동기화';
@@ -452,51 +536,148 @@ function updateCloudStatusUI() {
   if (cloudConnectBtn) cloudConnectBtn.textContent = cloudEnabled ? '클라우드 변경' : '클라우드 연결';
 }
 async function apiGetState() {
-  const url = cloudUrl + (cloudUrl.includes('?') ? '&' : '?') + 'action=getState&_ts=' + Date.now();
-  const res = await fetch(url, { method: 'GET' });
+  const url = cloudUrl + (cloudUrl.includes('?') ? '&' : '?') + 'action=getState&sheetName='
+    + encodeURIComponent(CLOUD_META_SHEET_NAME) + '&_ts=' + Date.now();
+  const res = await fetch(url, { method: 'GET', cache: 'no-store' });
   if (!res.ok) throw new Error('State load failed: ' + res.status);
   const data = await res.json();
   if (!data.ok) throw new Error(data.error || 'Unknown getState error');
   return data.state || {};
 }
-async function apiSaveStateOnly() {
-  const res = await fetch(cloudUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({ action: 'saveState', state: cloudState, metaSheetName: CLOUD_META_SHEET_NAME }),
-  });
-  if (!res.ok) throw new Error('State save failed: ' + res.status);
+
+
+async function apiGetWords() {
+  const url = cloudUrl + (cloudUrl.includes('?') ? '&' : '?') + 'action=getWords&sheetName='
+    + encodeURIComponent(CLOUD_SHEET_NAME) + '&_ts=' + Date.now();
+  const res = await fetch(url, { method: 'GET', cache: 'no-store' });
+  if (!res.ok) throw new Error('Words load failed: ' + res.status);
   const data = await res.json();
-  if (!data.ok) throw new Error(data.error || 'Unknown saveState error');
-  return data;
+  if (!data.ok) throw new Error(data.error || 'Unknown getWords error');
+  return Array.isArray(data.rows) ? data.rows : [];
 }
-async function apiReplaceSheetData(reason='manual') {
-  const rows = getEffectiveRowsForCloud();
-  const res = await fetch(cloudUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify({
-      action: 'replaceSheetData',
-      sheetName: CLOUD_SHEET_NAME,
-      rows,
-      reason,
-    }),
-  });
-  if (!res.ok) throw new Error('Sheet sync failed: ' + res.status);
+
+async function apiGetSyncInfo() {
+  const url = cloudUrl + (cloudUrl.includes('?') ? '&' : '?') + 'action=getSyncInfo&_ts=' + Date.now();
+  const res = await fetch(url, { method: 'GET', cache: 'no-store' });
+  if (!res.ok) throw new Error('Sync info load failed: ' + res.status);
   const data = await res.json();
-  if (!data.ok) throw new Error(data.error || 'Unknown replaceSheetData error');
-  return data;
+  if (!data.ok) throw new Error(data.error || 'Unknown getSyncInfo error');
+  return data.syncInfo || {};
 }
+
+function setCloudStatusMessage(message) {
+  if (cloudStatusPill) cloudStatusPill.textContent = message;
+}
+
+function sleepMs(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function createSyncToken() {
+  return Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+}
+
+function postCloudPayloadViaHiddenForm(payload) {
+  return new Promise((resolve, reject) => {
+    try {
+      const iframeName = 'cloudSyncFrame_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      const iframe = document.createElement('iframe');
+      iframe.name = iframeName;
+      iframe.style.display = 'none';
+
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = cloudUrl;
+      form.target = iframeName;
+      form.style.display = 'none';
+      form.acceptCharset = 'UTF-8';
+
+      const payloadInput = document.createElement('textarea');
+      payloadInput.name = 'payload';
+      payloadInput.style.display = 'none';
+      payloadInput.value = JSON.stringify(payload);
+
+      form.appendChild(payloadInput);
+      document.body.appendChild(iframe);
+      document.body.appendChild(form);
+      form.submit();
+
+      // Cross-origin 응답은 직접 읽지 않는다. 이후 GET으로 syncToken을 검증한다.
+      setTimeout(() => {
+        try { form.remove(); } catch (e) {}
+        try { iframe.remove(); } catch (e) {}
+        resolve();
+      }, 900);
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+async function verifySyncToken(expectedToken) {
+  const waits = [350, 700, 1200, 1800, 2600, 3600];
+  for (const waitMs of waits) {
+    await sleepMs(waitMs);
+    try {
+      const info = await apiGetSyncInfo();
+      if (info && info.syncToken === expectedToken) return info;
+    } catch (err) {
+      console.warn('클라우드 저장 확인 재시도:', err);
+    }
+  }
+  return null;
+}
+
 async function persistCloudNow(reason='manual') {
-  if (!cloudEnabled || !cloudLoaded || persistInFlight) return;
+  if (!cloudEnabled || !cloudLoaded) return false;
+
+  if (persistInFlight) {
+    pendingPersistReason = reason || pendingPersistReason || 'change';
+    return false;
+  }
+
   persistInFlight = true;
+
   try {
-    await apiSaveStateOnly();
-    await apiReplaceSheetData(reason);
+    let nextReason = reason || pendingPersistReason || 'change';
+
+    do {
+      pendingPersistReason = '';
+      const snapshot = deepClone(cloudState);
+      const rows = getEffectiveRowsForCloud();
+      const syncToken = createSyncToken();
+
+      setCloudStatusMessage('클라우드: 저장 중…');
+
+      await postCloudPayloadViaHiddenForm({
+        action: 'syncAll',
+        state: snapshot,
+        stateSheetName: CLOUD_META_SHEET_NAME,
+        sheetName: CLOUD_SHEET_NAME,
+        rows,
+        reason: nextReason,
+        syncToken,
+      });
+
+      const syncInfo = await verifySyncToken(syncToken);
+      if (!syncInfo) {
+        setCloudStatusMessage('클라우드: 저장 확인 실패');
+        throw new Error('Google Sheets 저장 완료를 확인하지 못했습니다.');
+      }
+
+      setCloudStatusMessage('클라우드: 저장됨 · ' + Number(syncInfo.rowCount || rows.length).toLocaleString() + '행');
+      nextReason = pendingPersistReason || '';
+    } while (nextReason);
+
+    return true;
   } finally {
     persistInFlight = false;
+    setTimeout(() => {
+      if (!persistInFlight && !pendingPersistReason) updateCloudStatusUI();
+    }, 1500);
   }
 }
+
 function queueCloudPersist(reason='change') {
   if (!cloudEnabled) return;
   pendingPersistReason = reason || pendingPersistReason || 'change';
@@ -508,9 +689,12 @@ function queueCloudPersist(reason='change') {
       await persistCloudNow(currentReason);
     } catch (err) {
       console.error(err);
+      setCloudStatusMessage('클라우드: 저장 실패');
+      alert('클라우드 저장 실패: ' + (err && err.message ? err.message : err));
     }
-  }, 300);
+  }, 450);
 }
+
 function isCloudStateEmpty(state) {
   if (!state || typeof state !== 'object') return true;
   return (!Array.isArray(state.customEntries) || state.customEntries.length === 0)
@@ -522,34 +706,66 @@ async function connectCloud(url, silent=false) {
   cloudUrl = (url || '').trim();
   if (!cloudUrl) throw new Error('URL이 비어 있습니다.');
   localStorage.setItem(LS_CLOUD_URL_KEY, cloudUrl);
-  updateCloudStatusUI();
+  setCloudStatusMessage('클라우드: 불러오는 중…');
 
-  const remote = await apiGetState();
+  // 중요: 먼저 Google Sheet의 현재 DB를 읽는다. 연결만으로는 절대 덮어쓰지 않는다.
+  const [remoteState, remoteWords] = await Promise.all([
+    apiGetState(),
+    apiGetWords(),
+  ]);
+
+  if (remoteWords.length > 0) {
+    // Google Sheet WordsDB를 최신 원본(source of truth)으로 채택한다.
+    loadCloudWordsAsCanonical(remoteWords, remoteState || {});
+    cloudEnabled = true;
+    cloudLoaded = true;
+
+    updateLastRefDisplay();
+    refreshAll();
+    setCloudStatusMessage('클라우드: 불러옴 · ' + remoteWords.length.toLocaleString() + '행');
+
+    if (!silent) {
+      alert(
+        '클라우드 연결 완료\\n' +
+        '- Google Sheet의 현재 WordsDB ' + remoteWords.length.toLocaleString() + '개를 불러왔습니다.\\n' +
+        '- 연결만으로 기존 시트 데이터는 덮어쓰지 않습니다.\\n' +
+        '- 앞으로 추가/수정/삭제한 내용부터 전체 DB에 동기화됩니다.'
+      );
+    }
+    return;
+  }
+
+  // WordsDB가 비어 있는 예외적인 경우에만 기존 state/local 데이터를 이용한다.
   const localState = buildStateFromLocal();
   cloudState = {
-    customEntries: Array.isArray(remote.customEntries) ? remote.customEntries : [],
-    lastRefs: remote.lastRefs && typeof remote.lastRefs === 'object' ? remote.lastRefs : {},
-    baseOverrides: remote.baseOverrides && typeof remote.baseOverrides === 'object' ? remote.baseOverrides : {},
-    baseDeletions: Array.isArray(remote.baseDeletions) ? remote.baseDeletions : [],
+    customEntries: Array.isArray(remoteState.customEntries) ? remoteState.customEntries : [],
+    lastRefs: remoteState.lastRefs && typeof remoteState.lastRefs === 'object' ? remoteState.lastRefs : {},
+    baseOverrides: remoteState.baseOverrides && typeof remoteState.baseOverrides === 'object' ? remoteState.baseOverrides : {},
+    baseDeletions: Array.isArray(remoteState.baseDeletions) ? remoteState.baseDeletions : [],
   };
 
   if (isCloudStateEmpty(cloudState) && !isCloudStateEmpty(localState)) {
     cloudState = deepClone(localState);
-    cloudEnabled = true;
-    cloudLoaded = true;
-    await persistCloudNow('initial_upload_from_local');
   } else {
     applyCloudStateToLocal(cloudState);
-    cloudEnabled = true;
-    cloudLoaded = true;
-    await persistCloudNow('refresh_sheet_from_effective_rows');
   }
 
+  cloudEnabled = true;
+  cloudLoaded = true;
   updateCloudStatusUI();
   updateLastRefDisplay();
   refreshAll();
-  if (!silent) alert('클라우드 연결 완료\n- 현재 전체 단어 DB를 Google Sheet로 업로드했습니다.\n- 앞으로 추가/수정/삭제도 자동 반영됩니다.');
+
+  if (!silent) {
+    alert(
+      '클라우드 연결 완료\\n' +
+      '- Google Sheet의 WordsDB가 비어 있습니다.\\n' +
+      '- 안전을 위해 연결 시 자동 업로드는 하지 않았습니다.\\n' +
+      '- 단어를 추가/수정하면 그때 현재 DB가 저장됩니다.'
+    );
+  }
 }
+
 async function handleCloudConnect() {
   const current = localStorage.getItem(LS_CLOUD_URL_KEY) || '';
   const input = prompt('Apps Script 웹앱 URL(/exec)을 붙여넣어 주세요.\n\n비우고 확인하면 로컬 모드로 돌아갑니다.', current);
@@ -600,7 +816,11 @@ function simpleHash(str) {
   return (h >>> 0).toString(36);
 }
 function getBaseRowId(row) {
-  return 'b_' + simpleHash((row || []).join('␟'));
+  const sig = rowSignature(row);
+  if (cloudBaseIdBySignature && cloudBaseIdBySignature.has(sig)) {
+    return cloudBaseIdBySignature.get(sig);
+  }
+  return 'b_' + simpleHash(sig);
 }
 
 function makeHeader() {
